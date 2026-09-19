@@ -4,7 +4,8 @@ Aurora Player — Desktop Entry Point (Windows 10/11)
 """
 import sys
 import os
-from PySide6.QtGui import QGuiApplication, QIcon
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QUrl
 
@@ -24,7 +25,7 @@ def resource_path(relative_path: str) -> str:
 
 def main():
     # Настройка приложения
-    app = QGuiApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setOrganizationName("AuroraMedia")
     app.setApplicationName("AuroraPlayer")
 
@@ -34,7 +35,7 @@ def main():
 
     # Инициализация сервисов архитектуры
     db = LibraryDB()
-    player = PlayerController()
+    player = PlayerController(db)
     playlist_mgr = PlaylistManager(db)
     settings = SettingsManager()
     hotkeys = HotkeyManager(player)
