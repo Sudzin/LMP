@@ -524,7 +524,6 @@ ApplicationWindow {
                             delegate: Rectangle {
                                 id: trackRow
                                 width: tracksListView.width
-                                height: 56
                                 radius: 8
 
                                 property bool isCurrent: (playerController.currentTrack.file_path === modelData.file_path)
