@@ -14,8 +14,14 @@ ApplicationWindow {
     color: "#0a0712"
 
     property int currentTab: 0 // 0: Медиатека, 1: Видео, 2: Настройки
+    property int libraryFilter: 0 // 0: Все, 1: Аудио, 2: Видео, 3: Избранное
     property bool isFullscreen: false
     property string searchQuery: ""
+
+    // Атмосферный динамический неоновый фон (Spotify / Glow mesh)
+    DynamicBackground {
+        z: -1
+    }
 
     // Форматирование миллисекунд в MM:SS
     function formatTime(ms) {
@@ -200,18 +206,29 @@ ApplicationWindow {
 
                         Repeater {
                             model: [
-                                { label: "Медиатека", icon: "🎵", idx: 0 },
-                                { label: "Видео экран", icon: "🎬", idx: 1 },
-                                { label: "Настройки", icon: "⚙️", idx: 2 }
+                                { label: "Медиатека", icon: "🎵", action: function() { window.currentTab = 0; window.libraryFilter = 0; } },
+                                { label: "Только музыка", icon: "🎧", action: function() { window.currentTab = 0; window.libraryFilter = 1; } },
+                                { label: "Видеофайлы", icon: "🎬", action: function() { window.currentTab = 1; } },
+                                { label: "♥ Избранное", icon: "💖", action: function() { window.currentTab = 0; window.libraryFilter = 3; } },
+                                { label: "Настройки", icon: "⚙️", action: function() { window.currentTab = 2; } }
                             ]
                             delegate: Rectangle {
+                                id: navDelegateItem
                                 Layout.fillWidth: true
-                                height: 42
+                                height: 38
                                 radius: 8
-                                color: window.currentTab === modelData.idx ? "#241538" : (navHover.containsMouse ? "#181026" : "transparent")
+                                property bool isItemActive: {
+                                    if (index === 0) return window.currentTab === 0 && window.libraryFilter === 0
+                                    if (index === 1) return window.currentTab === 0 && window.libraryFilter === 1
+                                    if (index === 2) return window.currentTab === 1
+                                    if (index === 3) return window.currentTab === 0 && window.libraryFilter === 3
+                                    if (index === 4) return window.currentTab === 2
+                                    return false
+                                }
+                                color: isItemActive ? "#241538" : (navHover.containsMouse ? "#181026" : "transparent")
 
                                 Rectangle {
-                                    visible: window.currentTab === modelData.idx
+                                    visible: navDelegateItem.isItemActive
                                     width: 3
                                     height: 20
                                     radius: 1.5
@@ -227,12 +244,12 @@ ApplicationWindow {
                                     spacing: 12
                                     Text {
                                         text: modelData.icon
-                                        font.pixelSize: 15
+                                        font.pixelSize: 14
                                     }
                                     Text {
                                         text: modelData.label
-                                        color: window.currentTab === modelData.idx ? "white" : "#9ca3af"
-                                        font.bold: window.currentTab === modelData.idx
+                                        color: navDelegateItem.isItemActive ? "white" : "#9ca3af"
+                                        font.bold: navDelegateItem.isItemActive
                                         font.pixelSize: 13
                                     }
                                 }
@@ -242,7 +259,7 @@ ApplicationWindow {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: window.currentTab = modelData.idx
+                                    onClicked: modelData.action()
                                 }
                             }
                         }
@@ -327,7 +344,7 @@ ApplicationWindow {
 
                 // === ВКЛАДКА 0: МЕДИАТЕКА ===
                 Rectangle {
-                    color: "#0c0816"
+                    color: "#d90c0816"
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -432,6 +449,48 @@ ApplicationWindow {
                             }
                         }
 
+                        // Интерактивные фильтры (Все, Аудио, Видео, Избранное)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Repeater {
+                                model: [
+                                    { label: "Все файлы", filterId: 0, count: playerController.tracks.length },
+                                    { label: "Только музыка", filterId: 1, count: playerController.tracks.filter(function(t) { return !t.is_video }).length },
+                                    { label: "Видеофайлы", filterId: 2, count: playerController.tracks.filter(function(t) { return t.is_video }).length },
+                                    { label: "♥ Избранное", filterId: 3, count: playerController.tracks.filter(function(t) { return t.is_favorite }).length }
+                                ]
+                                delegate: Rectangle {
+                                    height: 32
+                                    radius: 16
+                                    implicitWidth: chipText.implicitWidth + 24
+                                    color: window.libraryFilter === modelData.filterId ? "#f43f5e" : (chipHover.containsMouse ? "#27173e" : "#181026")
+                                    border.color: window.libraryFilter === modelData.filterId ? "#f43f5e" : "#2f1b47"
+                                    border.width: 1
+
+                                    Text {
+                                        id: chipText
+                                        anchors.centerIn: parent
+                                        text: modelData.label + " (" + modelData.count + ")"
+                                        color: window.libraryFilter === modelData.filterId ? "white" : "#cbd5e1"
+                                        font.bold: window.libraryFilter === modelData.filterId
+                                        font.pixelSize: 12
+                                    }
+
+                                    MouseArea {
+                                        id: chipHover
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: window.libraryFilter = modelData.filterId
+                                    }
+                                }
+                            }
+
+                            Item { Layout.fillWidth: true }
+                        }
+
                         // СТРОГАЯ ШАПКА ТАБЛИЦЫ
                         Rectangle {
                             id: tableHeader
@@ -527,12 +586,18 @@ ApplicationWindow {
                                 radius: 8
 
                                 property bool isCurrent: (playerController.currentTrack.file_path === modelData.file_path)
+                                property bool matchesFilter: {
+                                    if (window.libraryFilter === 1) return !modelData.is_video
+                                    if (window.libraryFilter === 2) return modelData.is_video
+                                    if (window.libraryFilter === 3) return modelData.is_favorite
+                                    return true
+                                }
                                 property bool matchesSearch: (window.searchQuery === "" || 
                                     (modelData.title && modelData.title.toLowerCase().indexOf(window.searchQuery) !== -1) ||
                                     (modelData.artist && modelData.artist.toLowerCase().indexOf(window.searchQuery) !== -1))
 
-                                visible: matchesSearch
-                                height: matchesSearch ? 56 : 0
+                                visible: matchesFilter && matchesSearch
+                                height: (matchesFilter && matchesSearch) ? 56 : 0
 
                                 color: {
                                     if (isCurrent) return "#221136"
@@ -917,6 +982,12 @@ ApplicationWindow {
                         Item { Layout.fillHeight: true }
                     }
                 }
+            }
+
+            // --- 3. Правая панель (Now Playing, Vinyl Art & Live Spectrum) ---
+            NowPlayingPanel {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 280
             }
         }
 
