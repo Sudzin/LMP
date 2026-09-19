@@ -159,14 +159,14 @@ ApplicationWindow {
                                 color: textPrimary
                                 font.pixelSize: 18
                                 font.bold: true
-                                letterSpacing: 1.5
+                                font.letterSpacing: 1.5
                             }
                             Text {
                                 text: "MEDIA PLAYER"
                                 color: accentPink
                                 font.pixelSize: 8
                                 font.bold: true
-                                letterSpacing: 1.3
+                                font.letterSpacing: 1.3
                             }
                         }
                     }
@@ -178,7 +178,6 @@ ApplicationWindow {
                         text: "+  Открыть файл"
                         font.pixelSize: 13
                         font.bold: true
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: playerController.open_file_dialog()
 
                         background: Rectangle {
@@ -202,7 +201,6 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
                         text: "＋  Добавить папку"
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: playerController.open_folder_dialog()
 
                         background: Rectangle {
@@ -349,7 +347,6 @@ ApplicationWindow {
                     Button {
                         Layout.fillWidth: true
                         text: "⚙  Настройки"
-                        cursorShape: Qt.PointingHandCursor
                         background: null
                         onClicked: window.activeNavIndex = 4
                         contentItem: Text {
@@ -390,7 +387,7 @@ ApplicationWindow {
                                     color: accentPink
                                     font.pixelSize: 10
                                     font.bold: true
-                                    letterSpacing: 1.6
+                                    font.letterSpacing: 1.6
                                 }
                                 Text {
                                     text: "Мои треки и медиа"
@@ -867,7 +864,7 @@ ApplicationWindow {
                             color: accentPink
                             font.pixelSize: 10
                             font.bold: true
-                            letterSpacing: 1.4
+                            font.letterSpacing: 1.4
                         }
                         Item { Layout.fillWidth: true }
                         Text {
