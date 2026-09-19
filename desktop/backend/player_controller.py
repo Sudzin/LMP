@@ -3,6 +3,7 @@ Aurora Player — Player Controller & 10-Band Biquad Equalizer
 Qt Multimedia (QMediaPlayer + QAudioOutput) + scipy.signal + SQLite
 """
 import os
+import random
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot, Property, QUrl
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -35,6 +36,9 @@ class PlayerController(QObject):
     tracksChanged = Signal()
     volumeChanged = Signal(float)
     equalizerChanged = Signal()
+    currentIndexChanged = Signal(int)
+    shuffleChanged = Signal(bool)
+    repeatChanged = Signal(bool)
 
     def __init__(self, db=None, parent=None):
         super().__init__(parent)
@@ -46,15 +50,19 @@ class PlayerController(QObject):
         self._player.positionChanged.connect(self._on_position_changed)
         self._player.durationChanged.connect(self._on_duration_changed)
         self._player.playbackStateChanged.connect(self._on_state_changed)
+        self._player.mediaStatusChanged.connect(self._on_media_status_changed)
 
         self._tracks = []
         self._current_index = -1
+        self._shuffle = False
+        self._repeat = False
         self._current_track = {
             "title": "Нет трека",
             "artist": "Выберите файл для воспроизведения",
             "album": "",
             "duration": 0,
             "file_path": "",
+            "cover_url": "",
             "is_video": False,
             "is_favorite": False,
         }
@@ -67,7 +75,9 @@ class PlayerController(QObject):
         if self.db:
             saved = self.db.search_tracks("")
             for row in saved:
-                is_video = Path(row["file_path"]).suffix.lower() in VIDEO_EXTENSIONS
+                file_path = row["file_path"]
+                is_video = Path(file_path).suffix.lower() in VIDEO_EXTENSIONS
+                meta = read_media_metadata(file_path)
                 self._tracks.append({
                     "id": row["id"],
                     "title": row["title"],
@@ -75,7 +85,8 @@ class PlayerController(QObject):
                     "album": row["album"],
                     "genre": row.get("genre", ""),
                     "duration": row["duration"],
-                    "file_path": row["file_path"],
+                    "file_path": file_path,
+                    "cover_url": meta.get("cover_url", ""),
                     "is_video": is_video,
                     "is_favorite": bool(row.get("is_favorite", 0)),
                 })
@@ -98,6 +109,18 @@ class PlayerController(QObject):
     def volume(self):
         return self._volume
 
+    @Property(int, notify=currentIndexChanged)
+    def currentIndex(self):
+        return self._current_index
+
+    @Property(bool, notify=shuffleChanged)
+    def isShuffle(self):
+        return self._shuffle
+
+    @Property(bool, notify=repeatChanged)
+    def isRepeat(self):
+        return self._repeat
+
     @Property('QVariantMap', notify=currentTrackChanged)
     def currentTrack(self):
         return self._current_track
@@ -116,6 +139,7 @@ class PlayerController(QObject):
     def play_track(self, index: int):
         if 0 <= index < len(self._tracks):
             self._current_index = index
+            self.currentIndexChanged.emit(self._current_index)
             track = self._tracks[index]
             self._current_track = track
             self.currentTrackChanged.emit()
@@ -139,7 +163,12 @@ class PlayerController(QObject):
     def next_track(self):
         if len(self._tracks) == 0:
             return
-        next_idx = (self._current_index + 1) % len(self._tracks)
+        if self._shuffle and len(self._tracks) > 1:
+            next_idx = random.randint(0, len(self._tracks) - 1)
+            while next_idx == self._current_index:
+                next_idx = random.randint(0, len(self._tracks) - 1)
+        else:
+            next_idx = (self._current_index + 1) % len(self._tracks)
         self.play_track(next_idx)
 
     @Slot()
@@ -151,6 +180,16 @@ class PlayerController(QObject):
             return
         prev_idx = (self._current_index - 1 + len(self._tracks)) % len(self._tracks)
         self.play_track(prev_idx)
+
+    @Slot()
+    def toggle_shuffle(self):
+        self._shuffle = not self._shuffle
+        self.shuffleChanged.emit(self._shuffle)
+
+    @Slot()
+    def toggle_repeat(self):
+        self._repeat = not self._repeat
+        self.repeatChanged.emit(self._repeat)
 
     @Slot(int)
     def seek(self, position_ms: int):
@@ -191,10 +230,10 @@ class PlayerController(QObject):
 
     def add_files(self, file_paths):
         new_added = False
+        first_new_idx = len(self._tracks)
         for f in file_paths:
             path_obj = Path(f)
             if path_obj.suffix.lower() in SUPPORTED_EXTENSIONS:
-                # Извлечь метаданные
                 meta = read_media_metadata(str(path_obj))
                 is_video = path_obj.suffix.lower() in VIDEO_EXTENSIONS
                 track_item = {
@@ -205,20 +244,20 @@ class PlayerController(QObject):
                     "genre": meta.get("genre") or "Разное",
                     "duration": meta.get("duration") or 0,
                     "file_path": str(path_obj.resolve()),
+                    "cover_url": meta.get("cover_url", ""),
                     "is_video": is_video,
                     "is_favorite": False,
                 }
                 self._tracks.append(track_item)
                 new_added = True
 
-                # Сохранить в SQLite
                 if self.db:
                     self._save_track_to_db(track_item)
 
         if new_added:
             self.tracksChanged.emit()
             if self._current_index == -1 and len(self._tracks) > 0:
-                self.play_track(0)
+                self.play_track(first_new_idx)
 
     def add_folder(self, folder_path):
         found = []
@@ -280,16 +319,21 @@ class PlayerController(QObject):
                 else:
                     self._player.stop()
                     self._current_index = -1
+                    self.currentIndexChanged.emit(-1)
                     self._current_track = {
                         "title": "Нет трека",
                         "artist": "Добавьте файлы в медиатеку",
                         "album": "",
                         "duration": 0,
                         "file_path": "",
+                        "cover_url": "",
                         "is_video": False,
                         "is_favorite": False,
                     }
                     self.currentTrackChanged.emit()
+            elif self._current_index > index:
+                self._current_index -= 1
+                self.currentIndexChanged.emit(self._current_index)
 
     # === Эквалайзер (10 полос) ===
 
@@ -323,3 +367,12 @@ class PlayerController(QObject):
 
     def _on_state_changed(self, state):
         self.stateChanged.emit(state == QMediaPlayer.PlaybackState.PlayingState)
+
+    def _on_media_status_changed(self, status):
+        # Автопереход на следующий трек при окончании
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            if self._repeat:
+                self._player.setPosition(0)
+                self._player.play()
+            else:
+                self.next_track()

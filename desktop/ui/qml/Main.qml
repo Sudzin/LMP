@@ -6,56 +6,34 @@ import QtMultimedia
 ApplicationWindow {
     id: window
     visible: true
-    width: 1200
-    height: 780
-    minimumWidth: 900
-    minimumHeight: 600
+    width: 1280
+    height: 820
+    minimumWidth: 980
+    minimumHeight: 640
     title: "Aurora Player — " + (playerController.currentTrack.title || "Медиаплеер")
-    color: "#0d0914"
+    color: "#0a0712"
 
     property int currentTab: 0 // 0: Медиатека, 1: Видео, 2: Настройки
     property bool isFullscreen: false
+    property string searchQuery: ""
 
-    // Функция форматирования миллисекунд в MM:SS
+    // Форматирование миллисекунд в MM:SS
     function formatTime(ms) {
         if (!ms || ms <= 0) return "00:00"
         var totalSec = Math.floor(ms / 1000)
         var min = Math.floor(totalSec / 60)
         var sec = totalSec % 60
-        var minStr = (min < 10 ? "0" : "") + min
-        var secStr = (sec < 10 ? "0" : "") + sec
-        return minStr + ":" + secStr
+        return (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec
     }
 
     // Горячие клавиши
-    Shortcut {
-        sequence: "Space"
-        onActivated: playerController.toggle_play()
-    }
-    Shortcut {
-        sequence: "Left"
-        onActivated: playerController.seek(Math.max(0, playerController.position - 5000))
-    }
-    Shortcut {
-        sequence: "Right"
-        onActivated: playerController.seek(Math.min(playerController.duration, playerController.position + 5000))
-    }
-    Shortcut {
-        sequence: "Up"
-        onActivated: playerController.set_volume(playerController.volume + 0.05)
-    }
-    Shortcut {
-        sequence: "Down"
-        onActivated: playerController.set_volume(playerController.volume - 0.05)
-    }
-    Shortcut {
-        sequence: "F"
-        onActivated: toggleFullscreen()
-    }
-    Shortcut {
-        sequence: "F11"
-        onActivated: toggleFullscreen()
-    }
+    Shortcut { sequence: "Space"; onActivated: playerController.toggle_play() }
+    Shortcut { sequence: "Left"; onActivated: playerController.seek(Math.max(0, playerController.position - 5000)) }
+    Shortcut { sequence: "Right"; onActivated: playerController.seek(Math.min(playerController.duration, playerController.position + 5000)) }
+    Shortcut { sequence: "Up"; onActivated: playerController.set_volume(playerController.volume + 0.05) }
+    Shortcut { sequence: "Down"; onActivated: playerController.set_volume(playerController.volume - 0.05) }
+    Shortcut { sequence: "F"; onActivated: toggleFullscreen() }
+    Shortcut { sequence: "F11"; onActivated: toggleFullscreen() }
 
     function toggleFullscreen() {
         if (window.visibility === Window.FullScreen) {
@@ -67,7 +45,7 @@ ApplicationWindow {
         }
     }
 
-    // Drag-and-drop файлов в окно
+    // Drag-and-Drop
     DropArea {
         anchors.fill: parent
         onDropped: (drop) => {
@@ -86,47 +64,53 @@ ApplicationWindow {
         }
     }
 
-    // Основная сетка
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        // Главное тело (Сайдбар + Контент)
+        // ==========================================
+        // ВЕРХНЯЯ ЧАСТЬ: Сайдбар + Основной контент
+        // ==========================================
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
 
-            // 1. Сайдбар
+            // --- 1. Левый Сайдбар (Spotify-стиль) ---
             Rectangle {
                 Layout.fillHeight: true
-                Layout.preferredWidth: 230
-                color: "#120d1c"
-                border.color: "#1a1326"
-                border.width: 1
+                Layout.preferredWidth: 240
+                color: "#110b1a"
+
+                Rectangle {
+                    anchors.right: parent.right
+                    width: 1
+                    height: parent.height
+                    color: "#1c132b"
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 16
-                    spacing: 14
+                    anchors.margins: 18
+                    spacing: 16
 
-                    // Бренд / Логотип
+                    // Логотип
                     RowLayout {
-                        spacing: 10
+                        spacing: 12
                         Rectangle {
-                            width: 34
-                            height: 34
+                            width: 38
+                            height: 38
                             radius: 10
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
                                 GradientStop { position: 0.0; color: "#f43f5e" }
-                                GradientStop { position: 1.0; color: "#8b5cf6" }
+                                GradientStop { position: 1.0; color: "#9333ea" }
                             }
                             Text {
                                 anchors.centerIn: parent
                                 text: "▶"
                                 color: "white"
-                                font.pixelSize: 14
+                                font.pixelSize: 15
                             }
                         }
 
@@ -135,202 +119,400 @@ ApplicationWindow {
                             Text {
                                 text: "AURORA"
                                 color: "white"
-                                font.pixelSize: 16
+                                font.pixelSize: 18
                                 font.bold: true
+                                font.letterSpacing: 1.2
                             }
                             Text {
-                                text: "Media Player"
-                                color: "#9ca3af"
-                                font.pixelSize: 11
+                                text: "PRO MEDIA PLAYER"
+                                color: "#f43f5e"
+                                font.pixelSize: 9
+                                font.bold: true
+                                font.letterSpacing: 1.0
                             }
                         }
                     }
 
-                    // Кнопки открытия файлов
-                    Button {
+                    // Кнопки добавления контента
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 38
-                        background: Rectangle {
-                            color: "#f43f5e"
+                        spacing: 8
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 40
                             radius: 8
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "#f43f5e" }
+                                GradientStop { position: 1.0; color: "#be185d" }
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                text: "＋  Открыть файлы"
+                                color: "white"
+                                font.bold: true
+                                font.pixelSize: 13
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.open_file_dialog()
+                            }
                         }
-                        contentItem: Text {
-                            text: "+ Открыть файлы"
-                            color: "white"
-                            font.bold: true
-                            font.pixelSize: 13
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 38
+                            radius: 8
+                            color: openFolderHover.containsMouse ? "#26193b" : "#1a1228"
+                            border.color: "#2c1c45"
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "📁  Добавить папку"
+                                color: "#e2e8f0"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+                            MouseArea {
+                                id: openFolderHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.open_folder_dialog()
+                            }
                         }
-                        onClicked: playerController.open_file_dialog()
                     }
 
-                    Button {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 36
-                        background: Rectangle {
-                            color: "#221a30"
-                            border.color: "#3a2c52"
-                            radius: 8
-                        }
-                        contentItem: Text {
-                            text: "📁 Открыть папку"
-                            color: "#e2e8f0"
-                            font.pixelSize: 12
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        onClicked: playerController.open_folder_dialog()
-                    }
-
+                    // Разделитель
                     Rectangle {
                         Layout.fillWidth: true
                         height: 1
-                        color: "#271c3b"
+                        color: "#1e1430"
                     }
 
-                    // Навигация по вкладкам
+                    // Навигационные ссылки
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
 
                         Repeater {
                             model: [
-                                { label: "🎵  Медиатека", idx: 0 },
-                                { label: "🎬  Видео", idx: 1 },
-                                { label: "⚙️  Настройки", idx: 2 }
+                                { label: "Медиатека", icon: "🎵", idx: 0 },
+                                { label: "Видео экран", icon: "🎬", idx: 1 },
+                                { label: "Настройки", icon: "⚙️", idx: 2 }
                             ]
-                            delegate: Button {
+                            delegate: Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 40
-                                background: Rectangle {
-                                    color: window.currentTab === modelData.idx ? "#2b1c42" : "transparent"
-                                    radius: 8
+                                height: 42
+                                radius: 8
+                                color: window.currentTab === modelData.idx ? "#241538" : (navHover.containsMouse ? "#181026" : "transparent")
+
+                                Rectangle {
+                                    visible: window.currentTab === modelData.idx
+                                    width: 3
+                                    height: 20
+                                    radius: 1.5
+                                    color: "#f43f5e"
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 4
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
-                                contentItem: Text {
-                                    text: modelData.label
-                                    color: window.currentTab === modelData.idx ? "white" : "#9ca3af"
-                                    font.bold: window.currentTab === modelData.idx
-                                    font.pixelSize: 13
-                                    leftPadding: 12
-                                    verticalAlignment: Text.AlignVCenter
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 16
+                                    spacing: 12
+                                    Text {
+                                        text: modelData.icon
+                                        font.pixelSize: 15
+                                    }
+                                    Text {
+                                        text: modelData.label
+                                        color: window.currentTab === modelData.idx ? "white" : "#9ca3af"
+                                        font.bold: window.currentTab === modelData.idx
+                                        font.pixelSize: 13
+                                    }
                                 }
-                                onClicked: {
-                                    window.currentTab = modelData.idx
+
+                                MouseArea {
+                                    id: navHover
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: window.currentTab = modelData.idx
                                 }
                             }
                         }
 
-                        Button {
+                        // Кнопка эквалайзера в сайдбаре
+                        Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 40
-                            background: Rectangle {
-                                color: "transparent"
-                                radius: 8
+                            height: 42
+                            radius: 8
+                            color: eqBtnHover.containsMouse ? "#181026" : "transparent"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 16
+                                spacing: 12
+                                Text { text: "🎚️"; font.pixelSize: 15 }
+                                Text { text: "Эквалайзер 10-Band"; color: "#9ca3af"; font.pixelSize: 13 }
                             }
-                            contentItem: Text {
-                                text: "🎚️  Эквалайзер"
-                                color: "#9ca3af"
-                                font.pixelSize: 13
-                                leftPadding: 12
-                                verticalAlignment: Text.AlignVCenter
+
+                            MouseArea {
+                                id: eqBtnHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: eqModal.visible = true
                             }
-                            onClicked: eqModal.visible = true
                         }
                     }
 
                     Item { Layout.fillHeight: true }
 
-                    // Информация о библиотеке
+                    // Карточка библиотеки внизу сайдбара
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 50
-                        color: "#181024"
-                        radius: 8
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Text {
-                                text: "В медиатеке: " + playerController.tracks.length + " треков"
-                                color: "#9ca3af"
-                                font.pixelSize: 11
-                                Layout.alignment: Qt.AlignHCenter
+                        height: 72
+                        radius: 10
+                        color: "#170f26"
+                        border.color: "#25173d"
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 10
+
+                            Rectangle {
+                                width: 36
+                                height: 36
+                                radius: 8
+                                color: "#2b1945"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "💿"
+                                    font.pixelSize: 18
+                                }
                             }
-                            Text {
-                                text: "Форматы: MP3, FLAC, MP4..."
-                                color: "#6b7280"
-                                font.pixelSize: 10
-                                Layout.alignment: Qt.AlignHCenter
+
+                            ColumnLayout {
+                                spacing: 2
+                                Text {
+                                    text: "В медиатеке"
+                                    color: "white"
+                                    font.bold: true
+                                    font.pixelSize: 12
+                                }
+                                Text {
+                                    text: playerController.tracks.length + " аудио и видео"
+                                    color: "#9ca3af"
+                                    font.pixelSize: 11
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // 2. Рабочая область
+            // --- 2. Основная рабочая область ---
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 currentIndex: window.currentTab
 
-                // === Вкладка 0: Медиатека ===
-                Item {
+                // === ВКЛАДКА 0: МЕДИАТЕКА ===
+                Rectangle {
+                    color: "#0c0816"
+
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 20
+                        anchors.margins: 24
                         spacing: 16
 
-                        // Верхняя панель медиатеки
-                        RowLayout {
+                        // Баннер Hero в стиле Spotify
+                        Rectangle {
                             Layout.fillWidth: true
-                            spacing: 12
-
-                            Text {
-                                text: "Все медиафайлы"
-                                color: "white"
-                                font.bold: true
-                                font.pixelSize: 22
+                            height: 120
+                            radius: 16
+                            clip: true
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "#2d1345" }
+                                GradientStop { position: 0.6; color: "#1b0f2e" }
+                                GradientStop { position: 1.0; color: "#130a21" }
                             }
+                            border.color: "#381c57"
+                            border.width: 1
 
-                            Item { Layout.fillWidth: true }
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 20
+                                spacing: 20
 
-                            TextField {
-                                id: searchInput
-                                placeholderText: "Поиск по названию или артисту..."
-                                color: "white"
-                                placeholderTextColor: "#6b7280"
-                                Layout.preferredWidth: 260
-                                background: Rectangle {
-                                    color: "#181024"
-                                    border.color: "#2d1c47"
-                                    radius: 8
+                                // Большая иконка коллекции
+                                Rectangle {
+                                    width: 80
+                                    height: 80
+                                    radius: 12
+                                    gradient: Gradient {
+                                        orientation: Gradient.TopToBottom
+                                        GradientStop { position: 0.0; color: "#f43f5e" }
+                                        GradientStop { position: 1.0; color: "#7c3aed" }
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "🎧"
+                                        font.pixelSize: 36
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    spacing: 4
+                                    Text {
+                                        text: "ЛОКАЛЬНАЯ КОЛЛЕКЦИЯ"
+                                        color: "#f43f5e"
+                                        font.bold: true
+                                        font.pixelSize: 11
+                                        font.letterSpacing: 1.2
+                                    }
+                                    Text {
+                                        text: "Мои треки и медиа"
+                                        color: "white"
+                                        font.bold: true
+                                        font.pixelSize: 26
+                                    }
+                                    Text {
+                                        text: playerController.tracks.length + " файлов • Высокое качество звука (FLAC, MP3, WAV, MP4)"
+                                        color: "#9ca3af"
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                // Поле быстрого поиска
+                                Rectangle {
+                                    width: 260
+                                    height: 40
+                                    radius: 20
+                                    color: "#180f26"
+                                    border.color: searchInput.activeFocus ? "#f43f5e" : "#2d1b45"
+                                    border.width: 1
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 14
+                                        anchors.rightMargin: 14
+                                        spacing: 8
+
+                                        Text { text: "🔍"; font.pixelSize: 13 }
+
+                                        TextInput {
+                                            id: searchInput
+                                            Layout.fillWidth: true
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            clip: true
+                                            onTextChanged: window.searchQuery = text.toLowerCase()
+
+                                            Text {
+                                                text: "Поиск по трекам..."
+                                                color: "#6b7280"
+                                                font.pixelSize: 12
+                                                visible: !searchInput.text && !searchInput.activeFocus
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
 
-                        // Таблица / Заголовок колонок
+                        // СТРОГАЯ ШАПКА ТАБЛИЦЫ
                         Rectangle {
+                            id: tableHeader
                             Layout.fillWidth: true
-                            height: 36
-                            color: "#140e21"
+                            height: 38
+                            color: "#120b1f"
                             radius: 6
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 16
-                                anchors.rightMargin: 16
-                                spacing: 10
+                            property real availableWidth: tableHeader.width - 320
+                            property real titleColW: Math.max(160, availableWidth * 0.40)
+                            property real artistColW: Math.max(120, availableWidth * 0.30)
+                            property real albumColW: Math.max(100, availableWidth * 0.30)
 
-                                Text { text: "#"; color: "#6b7280"; font.bold: true; font.pixelSize: 11; Layout.preferredWidth: 30 }
-                                Text { text: "НАЗВАНИЕ"; color: "#6b7280"; font.bold: true; font.pixelSize: 11; Layout.fillWidth: true }
-                                Text { text: "ИСПОЛНИТЕЛЬ"; color: "#6b7280"; font.bold: true; font.pixelSize: 11; Layout.preferredWidth: 180 }
-                                Text { text: "АЛЬБОМ"; color: "#6b7280"; font.bold: true; font.pixelSize: 11; Layout.preferredWidth: 150 }
-                                Text { text: "ДЛИТ."; color: "#6b7280"; font.bold: true; font.pixelSize: 11; Layout.preferredWidth: 60; horizontalAlignment: Text.AlignRight }
-                                Text { text: "ДЕЙСТВИЯ"; color: "#6b7280"; font.bold: true; font.pixelSize: 11; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight }
+                            Item {
+                                anchors.fill: parent
+
+                                Text {
+                                    x: 16
+                                    width: 34
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "#"
+                                    color: "#6b7280"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                }
+
+                                Text {
+                                    x: 108
+                                    width: tableHeader.titleColW
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "НАЗВАНИЕ"
+                                    color: "#6b7280"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                }
+
+                                Text {
+                                    x: 108 + tableHeader.titleColW + 12
+                                    width: tableHeader.artistColW
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "ИСПОЛНИТЕЛЬ"
+                                    color: "#6b7280"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                }
+
+                                Text {
+                                    x: 108 + tableHeader.titleColW + 12 + tableHeader.artistColW + 12
+                                    width: tableHeader.albumColW
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "АЛЬБОМ"
+                                    color: "#6b7280"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                }
+
+                                Text {
+                                    x: parent.width - 130
+                                    width: 50
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "ДЛИТ."
+                                    color: "#6b7280"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                    horizontalAlignment: Text.AlignRight
+                                }
+
+                                Text {
+                                    x: parent.width - 76
+                                    width: 60
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "ДЕЙСТВИЯ"
+                                    color: "#6b7280"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
                             }
                         }
 
-                        // Список треков
+                        // СПИСОК ТРЕКОВ
                         ListView {
                             id: tracksListView
                             Layout.fillWidth: true
@@ -340,19 +522,37 @@ ApplicationWindow {
                             model: playerController.tracks
 
                             delegate: Rectangle {
+                                id: trackRow
                                 width: tracksListView.width
-                                height: 48
+                                height: 56
                                 radius: 8
+
+                                property bool isCurrent: (playerController.currentTrack.file_path === modelData.file_path)
+                                property bool matchesSearch: (window.searchQuery === "" || 
+                                    (modelData.title && modelData.title.toLowerCase().indexOf(window.searchQuery) !== -1) ||
+                                    (modelData.artist && modelData.artist.toLowerCase().indexOf(window.searchQuery) !== -1))
+
+                                visible: matchesSearch
+                                height: matchesSearch ? 56 : 0
+
                                 color: {
-                                    if (playerController.currentTrack.file_path === modelData.file_path) return "#2c173d"
-                                    if (itemMouseArea.containsMouse) return "#1d142b"
+                                    if (isCurrent) return "#221136"
+                                    if (rowArea.containsMouse) return "#170f24"
                                     return "transparent"
                                 }
+                                border.color: isCurrent ? "#4a2473" : "transparent"
+                                border.width: 1
+
+                                property real availableWidth: trackRow.width - 320
+                                property real titleColW: Math.max(160, availableWidth * 0.40)
+                                property real artistColW: Math.max(120, availableWidth * 0.30)
+                                property real albumColW: Math.max(100, availableWidth * 0.30)
 
                                 MouseArea {
-                                    id: itemMouseArea
+                                    id: rowArea
                                     anchors.fill: parent
                                     hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
                                     onDoubleClicked: {
                                         playerController.play_track(index)
                                         if (modelData.is_video) {
@@ -361,94 +561,177 @@ ApplicationWindow {
                                     }
                                 }
 
+                                // 1. Номер трека или статус Play / Анимированный визуализатор
+                                Item {
+                                    x: 16
+                                    width: 34
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: !(trackRow.isCurrent && playerController.isPlaying) && !rowArea.containsMouse
+                                        text: index + 1
+                                        color: trackRow.isCurrent ? "#f43f5e" : "#9ca3af"
+                                        font.pixelSize: 12
+                                        font.bold: trackRow.isCurrent
+                                    }
+
+                                    // Кнопка Play при наведении
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: rowArea.containsMouse && !(trackRow.isCurrent && playerController.isPlaying)
+                                        text: "▶"
+                                        color: "white"
+                                        font.pixelSize: 13
+                                    }
+
+                                    // Анимированный визуализатор если трек играет
+                                    VisualizerMini {
+                                        anchors.centerIn: parent
+                                        visible: trackRow.isCurrent && playerController.isPlaying
+                                        isPlaying: true
+                                    }
+                                }
+
+                                // 2. Обложка миниатюра (Cover Art)
+                                Rectangle {
+                                    x: 58
+                                    width: 40
+                                    height: 40
+                                    radius: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: "#28193f"
+                                    clip: true
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: modelData.cover_url || ""
+                                        fillMode: Image.PreserveAspectCrop
+                                        visible: modelData.cover_url !== ""
+                                    }
+
+                                    // Фоллбек иконка если нет обложки
+                                    Text {
+                                        anchors.centerIn: parent
+                                        visible: !modelData.cover_url
+                                        text: modelData.is_video ? "🎬" : "🎵"
+                                        font.pixelSize: 16
+                                    }
+                                }
+
+                                // 3. Название + бейдж
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 16
-                                    anchors.rightMargin: 16
-                                    spacing: 10
+                                    x: 108
+                                    width: trackRow.titleColW
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 8
 
-                                    // Номер или статус
                                     Text {
-                                        text: (playerController.currentTrack.file_path === modelData.file_path && playerController.isPlaying) ? "▶" : (index + 1)
-                                        color: (playerController.currentTrack.file_path === modelData.file_path) ? "#f43f5e" : "#9ca3af"
-                                        font.pixelSize: 12
-                                        Layout.preferredWidth: 30
-                                    }
-
-                                    // Название + бейдж
-                                    RowLayout {
+                                        text: modelData.title || "Без названия"
+                                        color: trackRow.isCurrent ? "#f43f5e" : "white"
+                                        font.bold: trackRow.isCurrent
+                                        font.pixelSize: 13
+                                        elide: Text.ElideRight
                                         Layout.fillWidth: true
-                                        spacing: 8
+                                    }
+
+                                    Rectangle {
+                                        visible: modelData.is_video
+                                        width: 42
+                                        height: 18
+                                        radius: 4
+                                        gradient: Gradient {
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0.0; color: "#8b5cf6" }
+                                            GradientStop { position: 1.0; color: "#6366f1" }
+                                        }
                                         Text {
-                                            text: modelData.title || "Без названия"
-                                            color: (playerController.currentTrack.file_path === modelData.file_path) ? "#f43f5e" : "white"
-                                            font.bold: (playerController.currentTrack.file_path === modelData.file_path)
-                                            font.pixelSize: 13
-                                            elide: Text.ElideRight
-                                        }
-                                        Rectangle {
-                                            visible: modelData.is_video
-                                            width: 38
-                                            height: 16
-                                            radius: 4
-                                            color: "#8b5cf6"
-                                            Text {
-                                                anchors.centerIn: parent
-                                                text: "VIDEO"
-                                                color: "white"
-                                                font.pixelSize: 9
-                                                font.bold: true
-                                            }
+                                            anchors.centerIn: parent
+                                            text: "VIDEO"
+                                            color: "white"
+                                            font.pixelSize: 9
+                                            font.bold: true
                                         }
                                     }
+                                }
 
-                                    Text {
-                                        text: modelData.artist || "—"
-                                        color: "#9ca3af"
-                                        font.pixelSize: 12
-                                        Layout.preferredWidth: 180
-                                        elide: Text.ElideRight
-                                    }
+                                // 4. Исполнитель
+                                Text {
+                                    x: 108 + trackRow.titleColW + 12
+                                    width: trackRow.artistColW
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.artist || "—"
+                                    color: trackRow.isCurrent ? "#e2e8f0" : "#9ca3af"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
 
-                                    Text {
-                                        text: modelData.album || "—"
-                                        color: "#6b7280"
-                                        font.pixelSize: 12
-                                        Layout.preferredWidth: 150
-                                        elide: Text.ElideRight
-                                    }
+                                // 5. Альбом
+                                Text {
+                                    x: 108 + trackRow.titleColW + 12 + trackRow.artistColW + 12
+                                    width: trackRow.albumColW
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.album || "—"
+                                    color: "#6b7280"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
 
-                                    Text {
-                                        text: window.formatTime(modelData.duration * 1000)
-                                        color: "#9ca3af"
-                                        font.pixelSize: 12
-                                        Layout.preferredWidth: 60
-                                        horizontalAlignment: Text.AlignRight
-                                    }
+                                // 6. Длительность
+                                Text {
+                                    x: parent.width - 130
+                                    width: 50
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: window.formatTime(modelData.duration * 1000)
+                                    color: "#9ca3af"
+                                    font.pixelSize: 12
+                                    horizontalAlignment: Text.AlignRight
+                                }
 
-                                    // Действия: избранное и удалить
-                                    RowLayout {
-                                        Layout.preferredWidth: 80
-                                        spacing: 8
-                                        Layout.alignment: Qt.AlignRight
+                                // 7. Действия (Избранное + Удалить)
+                                RowLayout {
+                                    x: parent.width - 76
+                                    width: 60
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 8
+                                    Layout.alignment: Qt.AlignHCenter
 
-                                        Button {
-                                            background: Rectangle { color: "transparent" }
-                                            contentItem: Text {
-                                                text: modelData.is_favorite ? "♥" : "♡"
-                                                color: modelData.is_favorite ? "#f43f5e" : "#6b7280"
-                                                font.pixelSize: 16
-                                            }
+                                    Rectangle {
+                                        width: 26
+                                        height: 26
+                                        radius: 13
+                                        color: favHover.containsMouse ? "#2d1d45" : "transparent"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelData.is_favorite ? "♥" : "♡"
+                                            color: modelData.is_favorite ? "#f43f5e" : "#6b7280"
+                                            font.pixelSize: 15
+                                        }
+                                        MouseArea {
+                                            id: favHover
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
                                             onClicked: playerController.toggle_favorite(index)
                                         }
+                                    }
 
-                                        Button {
-                                            background: Rectangle { color: "transparent" }
-                                            contentItem: Text {
-                                                text: "✕"
-                                                color: "#6b7280"
-                                                font.pixelSize: 13
-                                            }
+                                    Rectangle {
+                                        width: 26
+                                        height: 26
+                                        radius: 13
+                                        color: delHover.containsMouse ? "#3b1624" : "transparent"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "✕"
+                                            color: delHover.containsMouse ? "#f43f5e" : "#6b7280"
+                                            font.pixelSize: 13
+                                        }
+                                        MouseArea {
+                                            id: delHover
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
                                             onClicked: playerController.delete_track(index)
                                         }
                                     }
@@ -466,46 +749,59 @@ ApplicationWindow {
                                 anchors.centerIn: parent
                                 spacing: 14
 
+                                Rectangle {
+                                    width: 70
+                                    height: 70
+                                    radius: 35
+                                    color: "#1d122e"
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "🎵"
+                                        font.pixelSize: 32
+                                    }
+                                }
+
                                 Text {
-                                    text: "📁 Медиатека пуста"
+                                    text: "В медиатеке пока нет треков"
                                     color: "white"
                                     font.bold: true
-                                    font.pixelSize: 20
+                                    font.pixelSize: 18
                                     Layout.alignment: Qt.AlignHCenter
                                 }
 
                                 Text {
-                                    text: "Нажмите кнопку «Открыть файлы» или перетащите аудио/видео прямо сюда"
+                                    text: "Перетащите ваши MP3, FLAC или видеофайлы в это окно или выберите их"
                                     color: "#9ca3af"
                                     font.pixelSize: 13
                                     Layout.alignment: Qt.AlignHCenter
                                 }
 
-                                Button {
+                                Rectangle {
                                     Layout.alignment: Qt.AlignHCenter
-                                    text: "Выбрать файлы на компьютере"
-                                    background: Rectangle {
-                                        color: "#f43f5e"
-                                        radius: 8
-                                    }
-                                    contentItem: Text {
-                                        text: "Выбрать файлы на компьютере"
+                                    width: 200
+                                    height: 42
+                                    radius: 8
+                                    color: "#f43f5e"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "Выбрать на компьютере"
                                         color: "white"
                                         font.bold: true
                                         font.pixelSize: 13
-                                        leftPadding: 16
-                                        rightPadding: 16
-                                        topPadding: 8
-                                        bottomPadding: 8
                                     }
-                                    onClicked: playerController.open_file_dialog()
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: playerController.open_file_dialog()
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // === Вкладка 1: Видео плеер ===
+                // === ВКЛАДКА 1: ВИДЕО ЭКРАН ===
                 Rectangle {
                     color: "black"
 
@@ -518,21 +814,34 @@ ApplicationWindow {
                         }
                     }
 
-                    // Плашка, если видео не воспроизводится
+                    // Оверлей если видео не выбрано
                     ColumnLayout {
                         anchors.centerIn: parent
                         visible: !playerController.currentTrack.is_video
                         spacing: 12
 
+                        Rectangle {
+                            width: 64
+                            height: 64
+                            radius: 32
+                            color: "#1f1430"
+                            Layout.alignment: Qt.AlignHCenter
+                            Text {
+                                anchors.centerIn: parent
+                                text: "🎬"
+                                font.pixelSize: 28
+                            }
+                        }
+
                         Text {
-                            text: "🎬 Видео экран"
+                            text: "Видео экран готов"
                             color: "white"
                             font.bold: true
-                            font.pixelSize: 20
+                            font.pixelSize: 18
                             Layout.alignment: Qt.AlignHCenter
                         }
                         Text {
-                            text: "Запустите видеофайл (.mp4, .mkv, .avi, .mov) из списка медиатеки"
+                            text: "Дважды кликните на видеофайл в медиатеке для просмотра"
                             color: "#9ca3af"
                             font.pixelSize: 13
                             Layout.alignment: Qt.AlignHCenter
@@ -540,9 +849,9 @@ ApplicationWindow {
                     }
                 }
 
-                // === Вкладка 2: Настройки ===
+                // === ВКЛАДКА 2: НАСТРОЙКИ ===
                 Rectangle {
-                    color: "#0f0b17"
+                    color: "#0a0712"
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -550,7 +859,7 @@ ApplicationWindow {
                         spacing: 20
 
                         Text {
-                            text: "Настройки и управление"
+                            text: "Настройки приложения"
                             color: "white"
                             font.bold: true
                             font.pixelSize: 22
@@ -558,47 +867,51 @@ ApplicationWindow {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 180
-                            color: "#181024"
+                            height: 200
                             radius: 12
+                            color: "#130c1f"
+                            border.color: "#211536"
+                            border.width: 1
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 18
-                                spacing: 8
+                                anchors.margins: 20
+                                spacing: 10
 
                                 Text {
-                                    text: "Горячие клавиши:"
+                                    text: "Горячие клавиши (Keyboard Shortcuts):"
                                     color: "white"
                                     font.bold: true
-                                    font.pixelSize: 14
+                                    font.pixelSize: 15
                                 }
-                                Text { text: "• Пробел (Space) — Воспроизведение / Пауза"; color: "#cbd5e1"; font.pixelSize: 13 }
-                                Text { text: "• Стрелки ← / → — Перемотка на 5 секунд назад/вперед"; color: "#cbd5e1"; font.pixelSize: 13 }
-                                Text { text: "• Стрелки ↑ / ↓ — Регулировка громкости ±5%"; color: "#cbd5e1"; font.pixelSize: 13 }
-                                Text { text: "• F или F11 — Полноэкранный режим"; color: "#cbd5e1"; font.pixelSize: 13 }
+                                Text { text: "• Space — Воспроизведение / Пауза"; color: "#cbd5e1"; font.pixelSize: 13 }
+                                Text { text: "• ← / → — Перемотка на 5 сек назад / вперед"; color: "#cbd5e1"; font.pixelSize: 13 }
+                                Text { text: "• ↑ / ↓ — Регулировка громкости ±5%"; color: "#cbd5e1"; font.pixelSize: 13 }
+                                Text { text: "• F или F11 — Переключение полноэкранного режима"; color: "#cbd5e1"; font.pixelSize: 13 }
                             }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
                             height: 120
-                            color: "#181024"
                             radius: 12
+                            color: "#130c1f"
+                            border.color: "#211536"
+                            border.width: 1
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 18
+                                anchors.margins: 20
                                 spacing: 8
 
                                 Text {
-                                    text: "О приложении Aurora Player Desktop:"
+                                    text: "О Aurora Player:"
                                     color: "white"
                                     font.bold: true
-                                    font.pixelSize: 14
+                                    font.pixelSize: 15
                                 }
-                                Text { text: "Локальный полнофункциональный аудио/видео плеер на Python 3.12 + PySide6 (Qt 6.7+)"; color: "#9ca3af"; font.pixelSize: 12 }
-                                Text { text: "База данных библиотеки: %APPDATA%/AuroraPlayer/library.db"; color: "#9ca3af"; font.pixelSize: 12 }
+                                Text { text: "Версия: 1.0.0 Pro Desktop • Движок: Qt 6.7 Multimedia FFmpeg • SQLite База данных"; color: "#9ca3af"; font.pixelSize: 12 }
+                                Text { text: "Офлайн-плеер без телеметрии и слежки. Ваша музыка принадлежит только вам."; color: "#6b7280"; font.pixelSize: 12 }
                             }
                         }
 
@@ -608,118 +921,241 @@ ApplicationWindow {
             }
         }
 
-        // 3. Нижняя панель управления (Player Bar)
+        // ==========================================
+        // 3. НИЖНЯЯ ПАНЕЛЬ ВОСПРОИЗВЕДЕНИЯ (PLAYER BAR)
+        // ==========================================
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 88
-            color: "#110c1a"
-            border.color: "#1d142b"
-            border.width: 1
+            Layout.preferredHeight: 90
+            color: "#0e0917"
+
+            Rectangle {
+                anchors.top: parent.top
+                width: parent.width
+                height: 1
+                color: "#1c122b"
+            }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 16
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                spacing: 20
 
-                // Левая часть: информация о текущем треке
+                // 1. Слева: Информация о текущем треке
                 RowLayout {
-                    Layout.preferredWidth: 260
-                    spacing: 12
+                    Layout.preferredWidth: 280
+                    spacing: 14
 
+                    // Обложка текущего трека
                     Rectangle {
-                        width: 50
-                        height: 50
+                        width: 54
+                        height: 54
                         radius: 8
-                        gradient: Gradient {
-                            orientation: Gradient.TopToBottom
-                            GradientStop { position: 0.0; color: "#e11d48" }
-                            GradientStop { position: 1.0; color: "#7c3aed" }
+                        color: "#211438"
+                        clip: true
+
+                        Image {
+                            anchors.fill: parent
+                            source: playerController.currentTrack.cover_url || ""
+                            fillMode: Image.PreserveAspectCrop
+                            visible: playerController.currentTrack.cover_url !== ""
                         }
-                        Text {
-                            anchors.centerIn: parent
-                            text: playerController.currentTrack.is_video ? "🎬" : "🎵"
-                            font.pixelSize: 22
+
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: !playerController.currentTrack.cover_url
+                            gradient: Gradient {
+                                orientation: Gradient.TopToBottom
+                                GradientStop { position: 0.0; color: "#e11d48" }
+                                GradientStop { position: 1.0; color: "#6d28d9" }
+                            }
+                            Text {
+                                anchors.centerIn: parent
+                                text: playerController.currentTrack.is_video ? "🎬" : "🎵"
+                                font.pixelSize: 22
+                            }
                         }
                     }
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
+
                         Text {
                             text: playerController.currentTrack.title || "Нет трека"
                             color: "white"
                             font.bold: true
-                            font.pixelSize: 13
+                            font.pixelSize: 14
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
+
                         Text {
-                            text: playerController.currentTrack.artist || "Выберите файл"
+                            text: playerController.currentTrack.artist || "Выберите файл для прослушивания"
                             color: "#9ca3af"
-                            font.pixelSize: 11
+                            font.pixelSize: 12
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
                     }
+
+                    // Кнопка Лайк
+                    Rectangle {
+                        width: 32
+                        height: 32
+                        radius: 16
+                        color: heartHover.containsMouse ? "#221438" : "transparent"
+                        Text {
+                            anchors.centerIn: parent
+                            text: playerController.currentTrack.is_favorite ? "♥" : "♡"
+                            color: playerController.currentTrack.is_favorite ? "#f43f5e" : "#9ca3af"
+                            font.pixelSize: 16
+                        }
+                        MouseArea {
+                            id: heartHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (playerController.currentIndex >= 0) {
+                                    playerController.toggle_favorite(playerController.currentIndex)
+                                }
+                            }
+                        }
+                    }
                 }
 
-                // Центральная часть: кнопки плеера и таймлайн
+                // 2. По центру: Кнопки воспроизведения + Таймлайн
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
 
-                    // Кнопки управления
+                    // Кнопки управления (Shuffle, Prev, Play, Next, Repeat)
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
-                        spacing: 16
+                        spacing: 20
 
-                        Button {
-                            background: Rectangle { color: "transparent" }
-                            contentItem: Text { text: "⏮"; color: "white"; font.pixelSize: 16 }
-                            onClicked: playerController.previous_track()
-                        }
-
-                        // Play/Pause кнопка
+                        // Shuffle
                         Rectangle {
-                            width: 38
-                            height: 38
-                            radius: 19
-                            color: "#f43f5e"
-
+                            width: 30
+                            height: 30
+                            radius: 15
+                            color: "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "🔀"
+                                color: playerController.isShuffle ? "#f43f5e" : "#6b7280"
+                                font.pixelSize: 14
+                            }
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: playerController.toggle_play()
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.toggle_shuffle()
                             }
+                        }
+
+                        // Previous
+                        Rectangle {
+                            width: 32
+                            height: 32
+                            radius: 16
+                            color: prevHover.containsMouse ? "#24163b" : "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏮"
+                                color: "white"
+                                font.pixelSize: 16
+                            }
+                            MouseArea {
+                                id: prevHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.previous_track()
+                            }
+                        }
+
+                        // Play/Pause круг
+                        Rectangle {
+                            width: 42
+                            height: 42
+                            radius: 21
+                            color: playHover.containsMouse ? "#fb7185" : "#f43f5e"
 
                             Text {
                                 anchors.centerIn: parent
                                 text: playerController.isPlaying ? "❚❚" : "▶"
                                 color: "white"
-                                font.pixelSize: 14
+                                font.pixelSize: 15
+                            }
+
+                            MouseArea {
+                                id: playHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.toggle_play()
                             }
                         }
 
-                        Button {
-                            background: Rectangle { color: "transparent" }
-                            contentItem: Text { text: "⏭"; color: "white"; font.pixelSize: 16 }
-                            onClicked: playerController.next_track()
+                        // Next
+                        Rectangle {
+                            width: 32
+                            height: 32
+                            radius: 16
+                            color: nextHover.containsMouse ? "#24163b" : "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏭"
+                                color: "white"
+                                font.pixelSize: 16
+                            }
+                            MouseArea {
+                                id: nextHover
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.next_track()
+                            }
+                        }
+
+                        // Repeat
+                        Rectangle {
+                            width: 30
+                            height: 30
+                            radius: 15
+                            color: "transparent"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "🔁"
+                                color: playerController.isRepeat ? "#f43f5e" : "#6b7280"
+                                font.pixelSize: 14
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: playerController.toggle_repeat()
+                            }
                         }
                     }
 
-                    // Таймлайн (Seek bar)
+                    // Таймлайн (Seek Bar)
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 10
+                        spacing: 12
 
                         Text {
                             text: window.formatTime(playerController.position)
                             color: "#9ca3af"
                             font.pixelSize: 11
+                            font.bold: true
+                            Layout.preferredWidth: 42
+                            horizontalAlignment: Text.AlignRight
                         }
 
-                        Slider {
-                            id: progressSlider
+                        AuroraSlider {
+                            id: timelineSlider
                             Layout.fillWidth: true
                             from: 0
                             to: Math.max(1, playerController.duration)
@@ -734,26 +1170,47 @@ ApplicationWindow {
                             text: window.formatTime(playerController.duration)
                             color: "#9ca3af"
                             font.pixelSize: 11
+                            font.bold: true
+                            Layout.preferredWidth: 42
                         }
                     }
                 }
 
-                // Правая часть: эквалайзер и громкость
+                // 3. Справа: Эквалайзер, Громкость, Fullscreen
                 RowLayout {
                     Layout.preferredWidth: 240
                     spacing: 12
                     Layout.alignment: Qt.AlignRight
 
-                    Button {
-                        background: Rectangle { color: "transparent" }
-                        contentItem: Text { text: "🎚️"; color: "white"; font.pixelSize: 16 }
-                        onClicked: eqModal.visible = !eqModal.visible
+                    // Кнопка вызова эквалайзера
+                    Rectangle {
+                        width: 34
+                        height: 34
+                        radius: 8
+                        color: eqIconHover.containsMouse ? "#221438" : "transparent"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "🎚️"
+                            font.pixelSize: 16
+                        }
+                        MouseArea {
+                            id: eqIconHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: eqModal.visible = !eqModal.visible
+                        }
                     }
 
-                    Text { text: "🔊"; color: "#9ca3af"; font.pixelSize: 14 }
+                    // Иконка громкости
+                    Text {
+                        text: playerController.volume === 0 ? "🔇" : (playerController.volume < 0.5 ? "🔉" : "🔊")
+                        font.pixelSize: 14
+                    }
 
-                    Slider {
-                        id: volumeSlider
+                    // Кастомный ползунок громкости
+                    AuroraSlider {
+                        id: volSlider
                         Layout.preferredWidth: 90
                         from: 0.0
                         to: 1.0
@@ -763,21 +1220,38 @@ ApplicationWindow {
                         }
                     }
 
-                    Button {
-                        background: Rectangle { color: "transparent" }
-                        contentItem: Text { text: window.isFullscreen ? "🗗" : "⛶"; color: "white"; font.pixelSize: 15 }
-                        onClicked: window.toggleFullscreen()
+                    // Полноэкранный режим
+                    Rectangle {
+                        width: 34
+                        height: 34
+                        radius: 8
+                        color: fsHover.containsMouse ? "#221438" : "transparent"
+                        Text {
+                            anchors.centerIn: parent
+                            text: window.isFullscreen ? "🗗" : "⛶"
+                            color: "white"
+                            font.pixelSize: 16
+                        }
+                        MouseArea {
+                            id: fsHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: window.toggleFullscreen()
+                        }
                     }
                 }
             }
         }
     }
 
-    // Модальное окно эквалайзера
+    // ==========================================
+    // МОДАЛЬНОЕ ОКНО ЭКВАЛАЙЗЕРА
+    // ==========================================
     Rectangle {
         id: eqModal
         anchors.fill: parent
-        color: "#99000000"
+        color: "#b3000000"
         visible: false
         z: 99
 
