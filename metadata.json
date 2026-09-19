@@ -1,0 +1,6 @@
+{
+  "name": "Aurora Player",
+  "description": "Локальный медиаплеер аудио и видео в стиле Spotify с 10-полосным эквалайзером, FFT-визуализатором и медиатекой.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
